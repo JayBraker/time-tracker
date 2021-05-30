@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>523</width>
+    <height>860</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Zeit - Tracker</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <widget class="QTabWidget" name="ProjektVerzeichnis">
+        <property name="baseSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="currentIndex">
+         <number>-1</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>523</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_files">
+    <property name="title">
+     <string>Datei</string>
+    </property>
+    <addaction name="action_new"/>
+    <addaction name="separator"/>
+    <addaction name="action_open_file"/>
+    <addaction name="separator"/>
+    <addaction name="action_save_file"/>
+    <addaction name="action_export"/>
+    <addaction name="separator"/>
+    <addaction name="action_close"/>
+   </widget>
+   <widget class="QMenu" name="menu_projects">
+    <property name="layoutDirection">
+     <enum>Qt::LeftToRight</enum>
+    </property>
+    <property name="title">
+     <string>Project</string>
+    </property>
+    <addaction name="action_new_projekt"/>
+    <addaction name="separator"/>
+    <addaction name="action_archive_project"/>
+   </widget>
+   <widget class="QMenu" name="menu_help">
+    <property name="title">
+     <string>Hilfe</string>
+    </property>
+    <addaction name="action_about"/>
+   </widget>
+   <addaction name="menu_files"/>
+   <addaction name="menu_projects"/>
+   <addaction name="menu_help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_new_projekt">
+   <property name="text">
+    <string>&amp;New</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::ApplicationShortcut</enum>
+   </property>
+  </action>
+  <action name="action_archive_project">
+   <property name="text">
+    <string>&amp;Archive</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WidgetShortcut</enum>
+   </property>
+  </action>
+  <action name="action_new">
+   <property name="text">
+    <string>Neu</string>
+   </property>
+  </action>
+  <action name="action_export">
+   <property name="text">
+    <string>Export</string>
+   </property>
+  </action>
+  <action name="action_open_recent">
+   <property name="text">
+    <string>Zuletzt verwendet</string>
+   </property>
+  </action>
+  <action name="action_search_file">
+   <property name="text">
+    <string>Datei</string>
+   </property>
+  </action>
+  <action name="action_minimize">
+   <property name="text">
+    <string>Minimieren</string>
+   </property>
+  </action>
+  <action name="action_terminate">
+   <property name="text">
+    <string>Schließen</string>
+   </property>
+  </action>
+  <action name="action_about">
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="action_open_archived">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Archivierte Projekte</string>
+   </property>
+  </action>
+  <action name="actionjj">
+   <property name="text">
+    <string>jj</string>
+   </property>
+  </action>
+  <action name="action_open_file">
+   <property name="text">
+    <string>Öffnen</string>
+   </property>
+  </action>
+  <action name="action_save_file">
+   <property name="text">
+    <string>Speichern</string>
+   </property>
+  </action>
+  <action name="action_close">
+   <property name="text">
+    <string>Beenden</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
