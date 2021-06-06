@@ -9,7 +9,7 @@ from setuptools import setup
 
 APP = ['app.py']
 DATA_FILES = ['BreezeStyleSheets/dark.qss','time-tracker.config']
-OPTIONS = {}
+OPTIONS = {'includes': ['sip', 'PyQt5', 'PyQt5.QtCore', 'PyQt5.QtWidgets', 'sqlite3', 'datetime', 'datetime.datetime', 'datetime.timedelta', 'sys', 'os', 'os.path', 'configparser']}
 
 setup(
     name="Time-Tracker",
