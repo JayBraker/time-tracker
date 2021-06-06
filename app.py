@@ -26,22 +26,6 @@ from main_view_ui import Ui_MainWindow
 from flowlayout import FlowLayout
 from datetime import datetime, timedelta
 
-config = {
-    "TABLES": {
-        "projects_table": "CREATE TABLE projects(id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(128) NOT NULL UNIQUE, started_at datetime NOT NULL, ended_at datetime);",
-        "tasks_table": "CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, name VARCHAR(128) NOT NULL UNIQUE, started_at datetime NOT NULL, ended_at datetime, count INTEGER, unique(project_id, name));",
-        "timestamps_table": "CREATE TABLE timestamps(id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, started_at datetime NOT NULL, ended_at datetime NOT NULL, count INTEGER);"
-        },
-    "SCHEMES": {
-        "projects_scheme": "id, name, started_at, ended_at",
-        "tasks_scheme": "id, project_id, name, started_at, ended_at, count",
-        "timestamps_scheme": "id, task_id, started_at, ended_at, count"
-        },
-    "base_state":{
-        "auto_save": 300000
-        }
-    }
-
 class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -61,7 +45,6 @@ class Window(QMainWindow, Ui_MainWindow):
             self.config.read_file(conf)
         
         if self.config.has_section("state") and 'file' in self.config['state']:
-        #if "state" in self.config and 'file' in self.config['state']:
             if not path.exists(self.config["state"]["file"]):
                 self.open_file_dialog(True)
 
