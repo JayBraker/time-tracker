@@ -20,27 +20,48 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
 )
+#import BreezeStyleSheets
+import pkg_resources
 from main_view_ui import Ui_MainWindow
 from flowlayout import FlowLayout
 from datetime import datetime, timedelta
 
+config = {
+    "TABLES": {
+        "projects_table": "CREATE TABLE projects(id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(128) NOT NULL UNIQUE, started_at datetime NOT NULL, ended_at datetime);",
+        "tasks_table": "CREATE TABLE tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL, name VARCHAR(128) NOT NULL UNIQUE, started_at datetime NOT NULL, ended_at datetime, count INTEGER, unique(project_id, name));",
+        "timestamps_table": "CREATE TABLE timestamps(id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, started_at datetime NOT NULL, ended_at datetime NOT NULL, count INTEGER);"
+        },
+    "SCHEMES": {
+        "projects_scheme": "id, name, started_at, ended_at",
+        "tasks_scheme": "id, project_id, name, started_at, ended_at, count",
+        "timestamps_scheme": "id, task_id, started_at, ended_at, count"
+        },
+    "base_state":{
+        "auto_save": 300000
+        }
+    }
 
 class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
-        file = QFile("BreezeStyleSheets/dark.qss")
+        style_sheet = pkg_resources.resource_filename(__name__,'BreezeStyleSheets/dark.qss')
+        file = QFile(style_sheet)
         file.open(QFile.ReadOnly | QFile.Text)
         stream = QTextStream(file)
         self.setStyleSheet(stream.readAll())
         self.project_format = "Flex_Grid"
+        self.project_dict = {}
+        self.database_file = None
 
-        self.config_file = "time-tracker.config"
+        self.config_file = pkg_resources.resource_filename(__name__,'time-tracker.config')
         self.config = configparser.ConfigParser()
-        with open(self.config_file) as conf:
+        with open(self.config_file, 'r') as conf:
             self.config.read_file(conf)
-
-        if self.config.has_section("state"):
+        
+        if self.config.has_section("state") and 'file' in self.config['state']:
+        #if "state" in self.config and 'file' in self.config['state']:
             if not path.exists(self.config["state"]["file"]):
                 self.open_file_dialog(True)
 
@@ -58,7 +79,6 @@ class Window(QMainWindow, Ui_MainWindow):
         self.connectSignalsSlots()
 
     def open_file_dialog(self, new_file=False):
-        self.database_file = None
         if new_file:
             file, check = QFileDialog.getSaveFileName(
                 None,
@@ -88,9 +108,9 @@ class Window(QMainWindow, Ui_MainWindow):
             )
             if check:
                 self.database_file = file
-        self.populate_from_db()
 
         if check:
+            self.populate_from_db()
             self.config["state"]["file"] = self.database_file
             with open(self.config_file, "w") as conf:
                 self.config.write(conf)
@@ -98,8 +118,16 @@ class Window(QMainWindow, Ui_MainWindow):
         else:
             self.statusBar().showMessage("Es wurde keine Datenbank angelegt.")
 
-    def populate_from_db(self):
+    def clean_canvas(self):
+        for project in self.project_dict:
+            for task in self.project_dict[project]["tasks"]:
+                self.delete_task(self.project_dict[project]["tasks"][task]["task_obj"],permanent=False)
+            self.project_dict[project]["tab"].setParent(None)
+            self.project_dict[project]["tab"].deleteLater()
         self.project_dict = {}
+    
+    def populate_from_db(self):
+        self.clean_canvas()
         if self.database_file:
             print("Attempting to load State from {}".format(self.database_file))
             projects_scheme = self.config["SCHEMES"].get("projects_scheme").split(", ")
@@ -166,6 +194,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
                 except Exception as e:
                     print(e)
+            print("Project-Dict: {}".format(self.project_dict))
             self.draw_state()
 
     def draw_state(self):
@@ -205,6 +234,8 @@ class Window(QMainWindow, Ui_MainWindow):
                         temp_task[key] = ""
                 to_db["tasks"].append(temp_task)
 
+        if not self.database_file:
+            return
         with sqlite3.connect(self.database_file) as db:
             cursor = db.cursor()
             for item in to_db["projects"]:
@@ -303,22 +334,23 @@ class Window(QMainWindow, Ui_MainWindow):
             "count": 0,
         }
 
-    def delete_task(self, task):
+    def delete_task(self, task, permanent=True):
         if task.flag:
             self.stop_stopwatch(task, task.project_name)
-        dlg = DeleteDialog(task.task_name)
-        if dlg.exec():
-            print(task.parent().vLayout.gLayout.removeWidget(task))
-            task_id = self.project_dict[task.project_name]["tasks"][task.task_name][
-                "id"
-            ]
-            self.project_dict[task.project_name]["tasks"].pop(task.task_name)
-            with sqlite3.connect(self.database_file) as db:
-                cursor = db.cursor()
-                cursor.execute("DELETE FROM tasks WHERE id = {}".format(task_id))
-            print(task_id)
+        if permanent:
+            dlg = DeleteDialog(task.task_name)
+            if dlg.exec():
+                print(task.parent().vLayout.gLayout.removeWidget(task))
+                task_id = self.project_dict[task.project_name]["tasks"][task.task_name][
+                    "id"
+                ]
+                self.project_dict[task.project_name]["tasks"].pop(task.task_name)
+                with sqlite3.connect(self.database_file) as db:
+                    cursor = db.cursor()
+                    cursor.execute("DELETE FROM tasks WHERE id = {}".format(task_id))
+                print(task_id)
 
-            task.deleteLater()
+        task.deleteLater()
 
     def summarize_time(self, tab):
         project = self.project_dict[tab.project_name]
