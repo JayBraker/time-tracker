@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import (
     QDialogButtonBox,
     QFileDialog,
 )
+import logging
 #import BreezeStyleSheets
 import pkg_resources
 from main_view_ui import Ui_MainWindow
@@ -30,7 +31,9 @@ class Window(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+        
         style_sheet = pkg_resources.resource_filename(__name__,'BreezeStyleSheets/dark.qss')
+        style_sheet = pkg_resources.resource_filename(__name__,'dark.qss')
         file = QFile(style_sheet)
         file.open(QFile.ReadOnly | QFile.Text)
         stream = QTextStream(file)
@@ -43,6 +46,8 @@ class Window(QMainWindow, Ui_MainWindow):
         self.config = configparser.ConfigParser()
         with open(self.config_file, 'r') as conf:
             self.config.read_file(conf)
+        
+        self.setup_logging()
         
         if self.config.has_section("state") and 'file' in self.config['state']:
             if not path.exists(self.config["state"]["file"]):
@@ -61,6 +66,25 @@ class Window(QMainWindow, Ui_MainWindow):
 
         self.connectSignalsSlots()
 
+    def setup_logging(self):
+        if self.config.has_section("state") and not 'LOG_TO' in self.config["state"]:
+            log_file, check = QFileDialog.getSaveFileName(
+                None,
+                "Speicherort für Log-Dateien auswählen",
+                "",
+                "Logfile (*.log)"
+            )
+            if check:
+                self.config["state"]["LOG_TO"] = log_file
+                
+        if 'LOG_TO' in self.config["state"]:
+            logging.basicConfig(format='%(asctime)s %(message)s', filename=self.config["state"]["LOG_TO"], level=logging.DEBUG)
+            with open(self.config_file, "w") as conf:
+                self.config.write(conf)
+        else:
+                        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
+        
+
     def open_file_dialog(self, new_file=False):
         if new_file:
             file, check = QFileDialog.getSaveFileName(
@@ -76,7 +100,7 @@ class Window(QMainWindow, Ui_MainWindow):
                     for table in self.config["TABLES"]:
                         table_statement = self.config["TABLES"][table]
                         db.execute(table_statement)
-                        print(table_statement)
+                        logging.debug(table_statement)
                         self.statusBar().showMessage("Datenbank wurde angelegt.")
                 except Exception:
                     self.statusBar().showMessage("Datenbank nicht leer, lade Inhalte.")
@@ -112,13 +136,13 @@ class Window(QMainWindow, Ui_MainWindow):
     def populate_from_db(self):
         self.clean_canvas()
         if self.database_file:
-            print("Attempting to load State from {}".format(self.database_file))
+            logging.debug("Attempting to load State from {}".format(self.database_file))
             projects_scheme = self.config["SCHEMES"].get("projects_scheme").split(", ")
             tasks_scheme = self.config["SCHEMES"].get("tasks_scheme").split(", ")
             with sqlite3.connect(self.database_file) as db:
                 conn = db.cursor()
                 try:
-                    print("Loading Projects...")
+                    logging.debug("Loading Projects...")
                     conn.execute(
                         "SELECT {keys} FROM projects;".format(
                             keys=", ".join(projects_scheme)
@@ -134,11 +158,11 @@ class Window(QMainWindow, Ui_MainWindow):
                             "tasks": {},
                             "tab": None,
                         }
-                    print("Projects loaded.")
+                    logging.debug("Projects loaded.")
                 except Exception as e:
-                    print(e)
+                    logging.debug(e)
                 try:
-                    print("Loading tasks...")
+                    logging.debug("Loading tasks...")
                     for project in self.project_dict:
                         conn.execute(
                             "SELECT {keys} FROM tasks WHERE project_id = {pid};".format(
@@ -147,7 +171,7 @@ class Window(QMainWindow, Ui_MainWindow):
                             )
                         )
                         tasks_tuple = conn.fetchall()
-                        print(tasks_tuple)
+                        logging.debug(tasks_tuple)
                         for task in tasks_tuple:
                             self.project_dict[project]["tasks"][task[2]] = {
                                 "id": task[0],
@@ -159,7 +183,7 @@ class Window(QMainWindow, Ui_MainWindow):
                                 "task_obj": None,
                                 "count": task[5],
                             }
-                            print("Loaded Task {}".format(task[2]))
+                            logging.debug("Loaded Task {}".format(task[2]))
                             sql = "SELECT SUM(count) FROM timestamps WHERE task_id = {};".format(
                                 task[0]
                             )
@@ -173,20 +197,20 @@ class Window(QMainWindow, Ui_MainWindow):
                                 self.project_dict[project]["tasks"][task[2]][
                                     "count"
                                 ] = 0
-                    print("All tasks loaded.")
+                    logging.debug("All tasks loaded.")
 
                 except Exception as e:
-                    print(e)
-            print("Project-Dict: {}".format(self.project_dict))
+                    logging.debug(e)
+            logging.debug("Project-Dict: {}".format(self.project_dict))
             self.draw_state()
 
     def draw_state(self):
         for project in self.project_dict:
-            print("Drawing {}".format(project))
+            logging.debug("Drawing {}".format(project))
             self.new_project(project)
 
             for task in self.project_dict[project]["tasks"]:
-                print("Drawing {}".format(task))
+                logging.debug("Drawing {}".format(task))
                 self.new_task(project, task)
 
     def write_state(self):
@@ -250,9 +274,9 @@ class Window(QMainWindow, Ui_MainWindow):
         self.action_new.triggered.connect(lambda: self.open_file_dialog(True))
 
     def closeEvent(self, event):
-        print("Saving state...")
+        logging.debug("Saving state...")
         self.write_state()
-        print("Finished!")
+        logging.debug("Finished!")
         self.close
 
     def register_db_id(self, type: str, object_dict):
@@ -281,7 +305,7 @@ class Window(QMainWindow, Ui_MainWindow):
                     ]
                 ),
             )
-            print(sql_insert)
+            logging.debug(sql_insert)
             cursor.execute(sql_insert)
             cursor.execute(
                 "SELECT id FROM {} WHERE name = '{}';".format(type, object_dict["name"])
@@ -323,7 +347,7 @@ class Window(QMainWindow, Ui_MainWindow):
         if permanent:
             dlg = DeleteDialog(task.task_name)
             if dlg.exec():
-                print(task.parent().vLayout.gLayout.removeWidget(task))
+                logging.debug(task.parent().vLayout.gLayout.removeWidget(task))
                 task_id = self.project_dict[task.project_name]["tasks"][task.task_name][
                     "id"
                 ]
@@ -331,7 +355,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 with sqlite3.connect(self.database_file) as db:
                     cursor = db.cursor()
                     cursor.execute("DELETE FROM tasks WHERE id = {}".format(task_id))
-                print(task_id)
+                logging.debug(task_id)
 
         task.deleteLater()
 
