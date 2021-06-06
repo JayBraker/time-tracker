@@ -91,7 +91,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "Zeit - Tracker"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "Time-Tracker"))
         self.menu_files.setTitle(_translate("MainWindow", "Datei"))
         self.menu_projects.setTitle(_translate("MainWindow", "Project"))
         self.menu_help.setTitle(_translate("MainWindow", "Hilfe"))
@@ -99,6 +99,8 @@ class Ui_MainWindow(object):
         self.action_new_projekt.setShortcut(_translate("MainWindow", "Ctrl+N"))
         self.action_archive_project.setText(_translate("MainWindow", "&Archive"))
         self.action_archive_project.setShortcut(_translate("MainWindow", "Ctrl+L"))
+        self.action_open_file.setShortcut(_translate("MainWindow", "Ctrl+O"))
+        self.action_new.setShortcut(_translate("MainWindow", "Ctrl+Shift+N"))
         self.action_new.setText(_translate("MainWindow", "Neu"))
         self.action_export.setText(_translate("MainWindow", "Export"))
         self.action_open_recent.setText(_translate("MainWindow", "Zuletzt verwendet"))
