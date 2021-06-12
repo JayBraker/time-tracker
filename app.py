@@ -34,6 +34,7 @@ class Window(QMainWindow, Ui_MainWindow):
         
         style_sheet = pkg_resources.resource_filename(__name__,'BreezeStyleSheets/dark.qss')
         style_sheet = pkg_resources.resource_filename(__name__,'dark.qss')
+        with open('BreezeStyleSheets/dark.qss') as fili: style_sheet = fili.read()
         file = QFile(style_sheet)
         file.open(QFile.ReadOnly | QFile.Text)
         stream = QTextStream(file)
@@ -280,6 +281,10 @@ class Window(QMainWindow, Ui_MainWindow):
         self.close
 
     def register_db_id(self, type: str, object_dict):
+        if not path.isfile(self.database_file):
+            dlg = GeneralDialog(info_txt='Aktuell ist keine Datenbank geöffnet.\nBitte öffne erst eine Datenbank oder lege eine neue Datei an.', info=True, title='Kann kein Projekt anlegen')
+            if dlg.exec():
+                return
         if type == "project":
             type = "projects"
             scheme = self.config["SCHEMES"].get("projects_scheme").split(", ")
@@ -326,20 +331,22 @@ class Window(QMainWindow, Ui_MainWindow):
         task.active_timer["started_at"] = datetime.now()
 
     def stop_stopwatch(self, task, project_name):
-        task.flag = False
-        timer = task.active_timer
-        timer["ended_at"] = datetime.now()
-        delta = timer["ended_at"] - timer["started_at"]
-        timer["count"] = delta.total_seconds()
+        if task.flag:
+            task.flag = False
+            timer = task.active_timer
+            timer["ended_at"] = datetime.now()
+            delta = timer["ended_at"] - timer["started_at"]
+            timer["count"] = delta.total_seconds()
 
-        task_dict = self.project_dict[project_name]["tasks"][task.task_name]
-        task_dict["time_slots"].append(task.active_timer.copy())
-        task.active_timer = {
-            "started_at": None,
-            "ended_at": None,
-            "task_id": task_dict["id"],
-            "count": 0,
-        }
+            task_dict = self.project_dict[project_name]["tasks"][task.task_name]
+            task_dict["time_slots"].append(task.active_timer.copy())
+            task.active_timer = {
+                "started_at": None,
+                "ended_at": None,
+                "task_id": task_dict["id"],
+                "count": 0,
+            }
+        return
 
     def delete_task(self, task, permanent=True):
         if task.flag:
@@ -551,6 +558,28 @@ class DeleteDialog(QDialog):
 
         self.layout = QVBoxLayout()
         message = QLabel("Soll {} wirklich gelöscht werden?".format(item_name))
+        self.layout.addWidget(message)
+        self.layout.addWidget(self.buttonBox)
+        self.setLayout(self.layout)
+
+class GeneralDialog(QDialog):
+    def __init__(self, info_txt, info=True, item_name=None, title="Hallo!"):
+        super().__init__()
+
+        self.setWindowTitle(title)
+
+        QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+
+        self.buttonBox = QDialogButtonBox(QBtn)
+        self.buttonBox.accepted.connect(self.accept)
+        if not info_txt:
+            self.buttonBox.rejected.connect(self.reject)
+
+        self.layout = QVBoxLayout()
+        text = info
+        if item_name:
+            text.format(item_name)
+        message = QLabel(item)
         self.layout.addWidget(message)
         self.layout.addWidget(self.buttonBox)
         self.setLayout(self.layout)
