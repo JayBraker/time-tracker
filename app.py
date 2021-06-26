@@ -34,7 +34,7 @@ class Window(QMainWindow, Ui_MainWindow):
         
         style_sheet = pkg_resources.resource_filename(__name__,'BreezeStyleSheets/dark.qss')
         style_sheet = pkg_resources.resource_filename(__name__,'dark.qss')
-        with open('BreezeStyleSheets/dark.qss') as fili: style_sheet = fili.read()
+        #with open('BreezeStyleSheets/dark.qss') as fili: style_sheet = fili.read()
         file = QFile(style_sheet)
         file.open(QFile.ReadOnly | QFile.Text)
         stream = QTextStream(file)
@@ -50,8 +50,8 @@ class Window(QMainWindow, Ui_MainWindow):
         
         self.setup_logging()
         
-        if self.config.has_section("state") and 'file' in self.config['state']:
-            if not path.exists(self.config["state"]["file"]):
+        if self.config.has_section("state"): # and 'file' in self.config['state']:
+            if not "file" in self.config["state"] or not path.exists(self.config["state"]["file"]):
                 self.open_file_dialog(True)
 
             self.database_file = self.config["state"].get("file")
@@ -62,12 +62,14 @@ class Window(QMainWindow, Ui_MainWindow):
             else:
                 save_interval = int(self.config["base_state"].get("auto_save"))
             self.auto_save = QTimer()
-            self.auto_save.timeout.connect(self.write_state)
+            self.auto_save.timeout.connect(lambda: self.write_state(by_ui_interaction=False))
             self.auto_save.start(int(save_interval))
 
         self.connectSignalsSlots()
 
-    def setup_logging(self):
+    def setup_logging(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Setting up a log-file because of manual trigger.")
         if self.config.has_section("state") and not 'LOG_TO' in self.config["state"]:
             log_file, check = QFileDialog.getSaveFileName(
                 None,
@@ -86,7 +88,9 @@ class Window(QMainWindow, Ui_MainWindow):
                         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.DEBUG)
         
 
-    def open_file_dialog(self, new_file=False):
+    def open_file_dialog(self, new_file=False, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Open_File dialog for database because of manual trigger.")
         if new_file:
             file, check = QFileDialog.getSaveFileName(
                 None,
@@ -126,7 +130,9 @@ class Window(QMainWindow, Ui_MainWindow):
         else:
             self.statusBar().showMessage("Es wurde keine Datenbank angelegt.")
 
-    def clean_canvas(self):
+    def clean_canvas(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Clearing UI Canvas because of manual trigger.")
         for project in self.project_dict:
             for task in self.project_dict[project]["tasks"]:
                 self.delete_task(self.project_dict[project]["tasks"][task]["task_obj"],permanent=False)
@@ -134,7 +140,9 @@ class Window(QMainWindow, Ui_MainWindow):
             self.project_dict[project]["tab"].deleteLater()
         self.project_dict = {}
     
-    def populate_from_db(self):
+    def populate_from_db(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Started populating UI Canvas from database file because of manual trigger.")
         self.clean_canvas()
         if self.database_file:
             logging.debug("Attempting to load State from {}".format(self.database_file))
@@ -202,10 +210,13 @@ class Window(QMainWindow, Ui_MainWindow):
 
                 except Exception as e:
                     logging.debug(e)
+            logging.debug("State fully loaded!")
             logging.debug("Project-Dict: {}".format(self.project_dict))
             self.draw_state()
 
-    def draw_state(self):
+    def draw_state(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Drawing fresh state on UI Canvas because of manual trigger.")
         for project in self.project_dict:
             logging.debug("Drawing {}".format(project))
             self.new_project(project)
@@ -214,12 +225,17 @@ class Window(QMainWindow, Ui_MainWindow):
                 logging.debug("Drawing {}".format(task))
                 self.new_task(project, task)
 
-    def write_state(self):
+    def write_state(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Writing current state of UI Canvas to database because of manual trigger.")
+        logging.debug("Saving current state...")
         projects_scheme = self.config["SCHEMES"].get("projects_scheme").split(", ")
         tasks_scheme = self.config["SCHEMES"].get("tasks_scheme").split(", ")
         to_db = {"projects": [], "tasks": [], "timestamps": []}
 
+        logging.debug("Compiling serializeable state.")
         for project in self.project_dict:
+            logging.debug("Iterating projects...")
             temp_proj = {}
             for key in projects_scheme:
                 if key in self.project_dict[project]:
@@ -227,8 +243,10 @@ class Window(QMainWindow, Ui_MainWindow):
                 else:
                     temp_proj[key] = ""
             to_db["projects"].append(temp_proj)
-
+            
+            logging.debug("Iterating Tasks for project {}...".format(project))
             for task in self.project_dict[project]["tasks"]:
+                
                 for timestamp in self.project_dict[project]["tasks"][task][
                     "time_slots"
                 ]:
@@ -268,19 +286,25 @@ class Window(QMainWindow, Ui_MainWindow):
                 )
                 cursor.execute(sql_insert)
 
-    def connectSignalsSlots(self):
-        self.action_about.triggered.connect(self.about)
-        self.action_new_projekt.triggered.connect(self.new_project)
-        self.action_open_file.triggered.connect(lambda: self.open_file_dialog(False))
-        self.action_new.triggered.connect(lambda: self.open_file_dialog(True))
+    def connectSignalsSlots(self, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Connecting Signalslots because of manual trigger.")
+        self.action_about.triggered.connect(lambda: self.about(by_ui_interaction=True))
+        self.action_new_projekt.triggered.connect(lambda: self.new_project(by_ui_interaction=True))
+        self.action_open_file.triggered.connect(lambda: self.open_file_dialog(False, by_ui_interaction=True))
+        self.action_new.triggered.connect(lambda: self.open_file_dialog(True, by_ui_interaction=True))
 
-    def closeEvent(self, event):
+    def closeEvent(self, event, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Executing CloseEvents because of manual trigger.")
         logging.debug("Saving state...")
         self.write_state()
         logging.debug("Finished!")
         self.close
 
-    def register_db_id(self, type: str, object_dict):
+    def register_db_id(self, type: str, object_dict, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Registering new item in database because of manual trigger:\n  Type: {}\n  JSON: {}".format(type, object_dict))
         if not path.isfile(self.database_file):
             dlg = GeneralDialog(info_txt='Aktuell ist keine Datenbank geöffnet.\nBitte öffne erst eine Datenbank oder lege eine neue Datei an.', info=True, title='Kann kein Projekt anlegen')
             if dlg.exec():
@@ -319,18 +343,24 @@ class Window(QMainWindow, Ui_MainWindow):
 
             return id
 
-    def showTime(self, task):
+    def showTime(self, task, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Refreshing timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         # checking if flag is true
         if task.flag:
             task.count += 1
         text = str(timedelta(seconds=task.count))
         task.zLabel.setText(text)
 
-    def start_stopwatch(self, task, project_name):
+    def start_stopwatch(self, task, project_name, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Started timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         task.flag = True
         task.active_timer["started_at"] = datetime.now()
 
-    def stop_stopwatch(self, task, project_name):
+    def stop_stopwatch(self, task, project_name, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Stopped timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         if task.flag:
             task.flag = False
             timer = task.active_timer
@@ -348,12 +378,15 @@ class Window(QMainWindow, Ui_MainWindow):
             }
         return
 
-    def delete_task(self, task, permanent=True):
+    def delete_task(self, task, permanent=True, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Deleted Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         if task.flag:
             self.stop_stopwatch(task, task.project_name)
         if permanent:
             dlg = DeleteDialog(task.task_name)
             if dlg.exec():
+                logging.debug("Removing Task {} from database!".format(task.task_name))
                 logging.debug(task.parent().vLayout.gLayout.removeWidget(task))
                 task_id = self.project_dict[task.project_name]["tasks"][task.task_name][
                     "id"
@@ -362,11 +395,14 @@ class Window(QMainWindow, Ui_MainWindow):
                 with sqlite3.connect(self.database_file) as db:
                     cursor = db.cursor()
                     cursor.execute("DELETE FROM tasks WHERE id = {}".format(task_id))
-                logging.debug(task_id)
+            else:
+                return
 
         task.deleteLater()
 
-    def summarize_time(self, tab):
+    def summarize_time(self, tab, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Summarizing timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         project = self.project_dict[tab.project_name]
         total_count = 0
         for task in project["tasks"]:
@@ -378,7 +414,10 @@ class Window(QMainWindow, Ui_MainWindow):
         text = str(timedelta(seconds=total_count))
         tab.zLabel.setText(text)
 
-    def new_project(self, project_name=None):
+    def new_project(self, project_name=None, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Creating new Project {} because of manual trigger.".format(project_name))
+
         if not project_name:
             project_name, ok = QInputDialog.getText(
                 self,
@@ -403,6 +442,7 @@ class Window(QMainWindow, Ui_MainWindow):
                 "tasks": {},
             }
             project_dict["id"] = self.register_db_id("project", project_dict.copy())
+            logging.debug("Project {} received internal ID {}.".format(project_name, project_dict["id"]))
             self.project_dict[project_name] = project_dict
         else:
             ok = True
@@ -423,7 +463,7 @@ class Window(QMainWindow, Ui_MainWindow):
 
             add_task_button = QPushButton("Neue Aufgabe hinzufügen")
             add_task_button.setShortcut("Ctrl+T")
-            add_task_button.clicked.connect(lambda: self.new_task(project_name))
+            add_task_button.clicked.connect(lambda: self.new_task(project_name, by_ui_interaction=True))
 
             vLayout.addWidget(add_task_button, 0, Qt.AlignTop)
             if self.project_format == "Flex_Grid":
@@ -438,12 +478,14 @@ class Window(QMainWindow, Ui_MainWindow):
             vLayout.gLayout = gLayout
             tab.vLayout = vLayout
 
-            tab_timer.timeout.connect(lambda: self.summarize_time(tab))
+            tab_timer.timeout.connect(lambda: self.summarize_time(tab, by_ui_interaction=False))
             tab_timer.start(1000)
 
             self.project_dict[project_name]["tab"] = tab
 
-    def new_task(self, project_name, task_name=None):
+    def new_task(self, project_name, task_name=None, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Creating NEW Task for Project {} because of manual trigger.".format(project_name))
         if not task_name:
             task_name, ok = QInputDialog.getText(
                 self, "Name der Aufgabe", "Tätigkeit", QLineEdit.Normal, "Neue Aufgabe"
@@ -455,6 +497,7 @@ class Window(QMainWindow, Ui_MainWindow):
                     "Es existiert bereits eine Aufgabe unter diesem Namen!"
                 )
                 return
+            logging.debug("New Tasks name: {}".format(task_name))
             task_dict = {
                 "id": None,
                 "project_id": self.project_dict[project_name]["id"],
@@ -509,12 +552,12 @@ class Window(QMainWindow, Ui_MainWindow):
             push_button_start.setText("Start Timer")
             push_button_stop.setText("Stop Timer")
 
-            delete_task_button.clicked.connect(lambda: self.delete_task(task))
+            delete_task_button.clicked.connect(lambda: self.delete_task(task, by_ui_interaction=True))
             push_button_start.clicked.connect(
-                lambda: self.start_stopwatch(task, project_name)
+                lambda: self.start_stopwatch(task, project_name, by_ui_interaction=True)
             )
             push_button_stop.clicked.connect(
-                lambda: self.stop_stopwatch(task, project_name)
+                lambda: self.stop_stopwatch(task, project_name, by_ui_interaction=True)
             )
 
             horizontalLayout.addWidget(push_button_start, 0, Qt.AlignBottom)
@@ -526,13 +569,13 @@ class Window(QMainWindow, Ui_MainWindow):
             task.layout = verticalLayout
             task.setStyleSheet("background: rgba(239, 240, 241, 60);")
 
-            task.timer.timeout.connect(lambda: self.showTime(task))
+            task.timer.timeout.connect(lambda: self.showTime(task, by_ui_interaction=False))
             task.timer.start(1000)
 
             tab.vLayout.gLayout.addWidget(task)
             # tab.vLayout.addWidget(task, 0, Qt.AlignTop)
 
-    def about(self):
+    def about(self, by_ui_interaction=False):
         QMessageBox.about(
             self,
             "About Time-Tracker",
@@ -548,7 +591,7 @@ class DeleteDialog(QDialog):
     def __init__(self, item_name):
         super().__init__()
 
-        self.setWindowTitle("HELLO!")
+        self.setWindowTitle("Löschdialog")
 
         QBtn = QDialogButtonBox.Ok | QDialogButtonBox.Cancel
 
