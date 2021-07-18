@@ -246,7 +246,7 @@ class Window(QMainWindow, Ui_MainWindow):
             
             logging.debug("Iterating Tasks for project {}...".format(project))
             for task in self.project_dict[project]["tasks"]:
-                
+                self.save_timer(task=self.project_dict[project]["tasks"][task]["task_obj"], project_name=project, auto_save=True)               
                 for timestamp in self.project_dict[project]["tasks"][task][
                     "time_slots"
                 ]:
@@ -358,24 +358,33 @@ class Window(QMainWindow, Ui_MainWindow):
         task.flag = True
         task.active_timer["started_at"] = datetime.now()
 
-    def stop_stopwatch(self, task, project_name, by_ui_interaction=False):
+    def save_timer(self, task, project_name, by_ui_interaction=False, auto_save=False):
         if by_ui_interaction:
-            logging.debug("Stopped timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
+            logging.debug("Saved count of timer for task  {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
         if task.flag:
-            task.flag = False
-            timer = task.active_timer
+            timer = task.active_timer.copy()
             timer["ended_at"] = datetime.now()
             delta = timer["ended_at"] - timer["started_at"]
             timer["count"] = delta.total_seconds()
 
             task_dict = self.project_dict[project_name]["tasks"][task.task_name]
-            task_dict["time_slots"].append(task.active_timer.copy())
+            task_dict["time_slots"].append(timer)
             task.active_timer = {
                 "started_at": None,
                 "ended_at": None,
                 "task_id": task_dict["id"],
                 "count": 0,
             }
+            if auto_save:
+                task.active_timer["started_at"] = timer["ended_at"]
+        return
+
+    def stop_stopwatch(self, task, project_name, by_ui_interaction=False):
+        if by_ui_interaction:
+            logging.debug("Stopped timecounter for Task {} of Project {} because of manual trigger.".format(task.task_name, task.project_name))
+        if task.flag:
+            self.save_timer(task, project_name, by_ui_interaction=False, auto_save=False)
+            task.flag = False
         return
 
     def delete_task(self, task, permanent=True, by_ui_interaction=False):
