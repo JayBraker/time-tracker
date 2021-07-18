@@ -467,12 +467,6 @@ class Window(QMainWindow, Ui_MainWindow):
         task.deleteLater()
 
     def summarize_time(self, tab, by_ui_interaction=False):
-        if by_ui_interaction:
-            logging.debug(
-                "Summarizing timecounter for Task {} of Project {} because of manual trigger.".format(
-                    task.task_name, task.project_name
-                )
-            )
         project = self.project_dict[tab.project_name]
         total_count = 0
         for task in project["tasks"]:
